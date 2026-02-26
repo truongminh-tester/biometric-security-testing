@@ -1,0 +1,8 @@
+__pycache__/
+venv/
+dataset/
+models/*.pickle
+temp_uploads/
+audit_logs.json
+static/intruders/*
+!static/intruders/.gitkeep

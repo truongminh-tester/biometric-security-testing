@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Đăng nhập Đa phương thức</title>
+    <style>
+        :root {
+            --primary-color: #007bff; --primary-hover: #0056b3;
+            --danger-color: #dc3545; --danger-hover: #c82333;
+            --success-color: #28a745; --text-dark: #333; --border-color: #ddd;
+        }
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            display: flex; justify-content: center; align-items: center;
+            min-height: 100vh; height: auto;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: var(--text-dark); flex-direction: column; overflow: auto; padding: 2rem 0;
+        }
+        .main-title { font-size: 2.5rem; font-weight: 300; color: white; margin-bottom: 2rem; }
+        #login-container {
+            background: rgba(255,255,255,0.9); padding: 2.5rem; border-radius: 12px; width: 420px;
+            box-shadow: 0 8px 32px rgba(31,38,135,0.37);
+        }
+        .tab-buttons { display: flex; border-bottom: 2px solid var(--border-color); margin-bottom: 1.5rem; }
+        .tab-button {
+            flex: 1; padding: 12px; cursor: pointer; border: none; background: none;
+            font-size: 15px; font-weight: 600; color: #888;
+            border-bottom: 3px solid transparent; margin-bottom: -2px;
+        }
+        .tab-button.active { color: var(--primary-color); border-bottom-color: var(--primary-color); }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; animation: fadeIn 0.5s; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        
+        input[type="text"] {
+            width: calc(100% - 24px); padding: 12px; margin-bottom: 1rem;
+            border: 2px solid var(--border-color); border-radius: 8px; font-size: 16px;
+        }
+        button {
+            width: 100%; padding: 14px; border: none; color: white; font-size: 16px; font-weight: bold;
+            border-radius: 8px; cursor: pointer; margin-top: 1rem;
+            background: linear-gradient(45deg, var(--primary-color), var(--primary-hover));
+        }
+        #recordButton { background: linear-gradient(45deg, var(--danger-color), var(--danger-hover)); }
+        #recordButton.recording { background: var(--success-color); animation: pulse 1.5s infinite; }
+        @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(40,167,69,0.7); } 100% { box-shadow: 0 0 0 0 rgba(40,167,69,0); } }
+        
+        video { width: 100%; border-radius: 8px; background: #000; }
+        .file-upload-label {
+            display: block; padding: 20px; background: #f8f9fa; border: 2px dashed var(--border-color);
+            border-radius: 8px; text-align: center; cursor: pointer; margin: 2rem 0;
+        }
+        .file-upload-label:hover { border-color: var(--primary-color); background: #e9ecef; }
+        
+        #status { margin-bottom: 1.5rem; font-size: 1.1em; font-weight: bold; text-align: center; padding: 10px; border-radius: 6px; }
+        .success { color: #155724; background-color: #d4edda; border: 1px solid #c3e6cb; }
+        .error { color: #721c24; background-color: #f8d7da; border: 1px solid #f5c6cb; }
+        
+        .register-links { text-align: center; margin-top: 1.5rem; border-top: 1px solid #eee; padding-top: 1.5rem; font-size: 0.9em; }
+        .register-links a { color: var(--primary-color); text-decoration: none; font-weight: 500; margin: 0 5px; }
+        
+        #analysis-area { margin-top: 20px; text-align: center; border: 1px solid #eee; padding: 10px; border-radius: 8px; background: #f9f9f9; }
+        #analysis-img { border-radius: 8px; border: 2px solid #ccc; max-height: 200px; object-fit: contain; }
+    </style>
+</head>
+<body>
+    <h1 class="main-title">Hệ thống Xác thực Sinh trắc học</h1>
+
+    <div id="login-container">
+        <div id="status">Vui lòng nhập tên và chọn phương thức đăng nhập</div>
+
+        <div class="tab-buttons">
+            <button class="tab-button active" onclick="openTab(event, 'Face')">Mặt</button>
+            <button class="tab-button" onclick="openTab(event, 'Voice')">Giọng</button>
+            <button class="tab-button" onclick="openTab(event, 'Finger')">Vân tay</button>
+            <button class="tab-button" onclick="openTab(event, 'Iris')">Mống mắt</button>
+        </div>
+
+        <input type="text" id="username" placeholder="Nhập tên đăng nhập (chung)...">
+        
+        <div id="Face" class="tab-content active">
+            <h2 style="text-align: center;">Đăng nhập bằng khuôn mặt</h2>
+            <video id="webcam_face" autoplay playsinline></video>
+            <button id="loginFaceButton">Xác thực khuôn mặt</button>
+        </div>
+
+        <div id="Voice" class="tab-content">
+            <h2 style="text-align: center;">Đăng nhập bằng giọng nói</h2>
+            <p style="text-align: center; margin: 2rem 0;">Đọc to: <b style="color: var(--primary-color);">"Giọng nói của tôi là mật khẩu"</b></p>
+            <button id="recordButton">Nhấn để ghi âm (4s)</button>
+        </div>
+
+        <div id="Finger" class="tab-content">
+            <h2 style="text-align: center;">Đăng nhập bằng vân tay</h2>
+            <label for="fingerUpload" class="file-upload-label">
+                <span id="finger-text">Chọn ảnh vân tay...</span>
+            </label>
+            <input type="file" id="fingerUpload" accept="image/*" style="display: none;">
+            <button id="loginFingerButton">Xác thực vân tay</button>
+        </div>
+
+        <div id="Iris" class="tab-content">
+            <h2 style="text-align: center;">Đăng nhập bằng mống mắt</h2>
+            <label for="irisUpload" class="file-upload-label">
+                <span id="iris-text">Chọn ảnh mống mắt...</span>
+            </label>
+            <input type="file" id="irisUpload" accept="image/*" style="display: none;">
+            <button id="loginIrisButton">Xác thực mống mắt</button>
+        </div>
+
+        <div id="analysis-area" style="display:none;">
+            <p style="margin: 0 0 10px 0; font-weight: bold; color: #555;">Kết quả phân tích đặc trưng:</p>
+            <img id="analysis-img" src="" width="100%">
+        </div>
+
+        <div class="register-links">
+            <p>Chưa có tài khoản? Đăng ký tại đây:</p>
+            <a href="/register_face">Mặt</a> | <a href="/register_voice">Giọng</a> | 
+            <a href="/register_fingerprint">Vân tay</a> | <a href="/register_iris">Mống mắt</a>
+        </div>
+    </div>
+    <canvas id="snapshotCanvas" style="display:none;"></canvas>
+
+    <script>
+        // === KHAI BÁO BIẾN ===
+        const usernameInput = document.getElementById('username');
+        const statusElement = document.getElementById('status');
+        const analysisArea = document.getElementById('analysis-area');
+        const analysisImg = document.getElementById('analysis-img');
+        
+        // Face
+        const webcamFaceElement = document.getElementById('webcam_face');
+        const canvasElement = document.getElementById('snapshotCanvas');
+        const loginFaceButton = document.getElementById('loginFaceButton');
+        let streamFace;
+
+        // Voice
+        const recordButton = document.getElementById('recordButton');
+        let mediaRecorder; let audioChunks = [];
+
+        // Fingerprint & Iris
+        const loginFingerButton = document.getElementById('loginFingerButton');
+        const fingerInput = document.getElementById('fingerUpload');
+        const fingerText = document.getElementById('finger-text');
+        const loginIrisButton = document.getElementById('loginIrisButton');
+        const irisInput = document.getElementById('irisUpload');
+        const irisText = document.getElementById('iris-text');
+
+        // === LOGIC TAB ===
+        function openTab(evt, tabName) {
+            analysisArea.style.display = 'none';
+            statusElement.className = ''; statusElement.textContent = 'Vui lòng nhập tên và chọn phương thức đăng nhập';
+            
+            let i, tabcontent, tablinks;
+            tabcontent = document.getElementsByClassName("tab-content");
+            for (i = 0; i < tabcontent.length; i++) { tabcontent[i].style.display = "none"; }
+            tablinks = document.getElementsByClassName("tab-button");
+            for (i = 0; i < tablinks.length; i++) { tablinks[i].className = tablinks[i].className.replace(" active", ""); }
+            document.getElementById(tabName).style.display = "block";
+            evt.currentTarget.className += " active";
+            if (tabName === 'Face') startWebcam(); else stopWebcam();
+        }
+
+        // === LOGIC WEBCAM ===
+        async function startWebcam() {
+            if (!streamFace) {
+                try {
+                    streamFace = await navigator.mediaDevices.getUserMedia({ video: true });
+                    webcamFaceElement.srcObject = streamFace;
+                } catch(e) { statusElement.textContent = "Lỗi webcam."; }
+            }
+        }
+        function stopWebcam() {
+            if (streamFace) { streamFace.getTracks().forEach(t => t.stop()); streamFace = null; }
+        }
+        function takeSnapshot() {
+            canvasElement.width = webcamFaceElement.videoWidth;
+            canvasElement.height = webcamFaceElement.videoHeight;
+            canvasElement.getContext('2d').drawImage(webcamFaceElement, 0, 0);
+            return canvasElement.toDataURL('image/png');
+        }
+
+        // === HÀM XỬ LÝ CHUYỂN HƯỚNG ===
+        function handleRedirect(data) {
+            if (data.success && data.redirect) {
+                statusElement.className = 'success';
+                statusElement.innerHTML = (data.message || "Thành công!") + '<br><span style="font-size:0.9em">⏳ Đang chuyển hướng...</span>';
+                if (data.analysis_image) {
+                    analysisArea.style.display = 'block';
+                    analysisImg.src = "data:image/jpeg;base64," + data.analysis_image;
+                    analysisImg.style.borderColor = '#28a745';
+                }
+                setTimeout(() => { window.location.href = data.redirect; }, 1500);
+                return true;
+            }
+            return false;
+        }
+
+        // === XỬ LÝ SỰ KIỆN FACE ===
+        loginFaceButton.addEventListener('click', async () => {
+            analysisArea.style.display = 'none';
+            const user = usernameInput.value;
+            if(!user) return alert("Nhập tên!");
+            const img = takeSnapshot();
+            
+            statusElement.textContent = "Đang nhận diện...";
+            const res = await fetch('/login_face', {
+                method: 'POST', headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ username: user, image: img })
+            });
+            const data = await res.json();
+            if (handleRedirect(data)) return;
+            statusElement.textContent = data.message;
+            statusElement.className = data.success ? 'success' : 'error';
+        });
+
+        // === XỬ LÝ SỰ KIỆN VOICE (Đã sửa lỗi ngoặc) ===
+        recordButton.addEventListener('click', () => {
+            analysisArea.style.display = 'none';
+            if (mediaRecorder && mediaRecorder.state === "recording") return;
+            
+            navigator.mediaDevices.getUserMedia({ audio: true, video: true }).then(stream => {
+                let videoTrack = stream.getVideoTracks()[0];
+                let audioTrack = stream.getAudioTracks()[0];
+                
+                // Gán stream vào video ẩn để lấy ảnh
+                webcamFaceElement.srcObject = new MediaStream([videoTrack]); 
+                mediaRecorder = new MediaRecorder(new MediaStream([audioTrack]));
+                
+                mediaRecorder.start();
+                audioChunks = [];
+                recordButton.textContent = "Đang ghi...";
+                recordButton.className = "recording"; 
+                statusElement.textContent = "Đang ghi âm và chụp ảnh bằng chứng...";
+                
+                setTimeout(() => mediaRecorder.stop(), 4000);
+                
+                mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
+                mediaRecorder.onstop = () => {
+                    recordButton.textContent = "Ghi âm (4s)";
+                    recordButton.className = ""; 
+                    
+                    const evidenceImgData = takeSnapshot(); 
+                    const blob = new Blob(audioChunks, { type: 'audio/webm' });
+                    const formData = new FormData();
+                    formData.append('username', usernameInput.value);
+                    formData.append('audio_data', blob);
+                    formData.append('evidence_image', evidenceImgData); 
+                    
+                    statusElement.textContent = "Đang phân tích giọng nói...";
+                    
+                    fetch('/login_voice', { method: 'POST', body: formData })
+                        .then(r => r.json())
+                        .then(d => {
+                            if (handleRedirect(d)) return;
+                            statusElement.innerHTML = d.message; 
+                            statusElement.className = d.success ? 'success' : 'error';
+                        })
+                        .catch(err => {
+                            // Đây là nơi bắt lỗi kết nối
+                            statusElement.textContent = "Lỗi kết nối: " + err;
+                            statusElement.className = 'error';
+                        });
+
+                    stream.getTracks().forEach(t => t.stop());
+                    webcamFaceElement.srcObject = null; 
+                    if(document.getElementById('Face').style.display === 'block') startWebcam();
+                };
+            }).catch(e => {
+                console.error(e);
+                statusElement.textContent = "Lỗi: Cần quyền Webcam & Mic!";
+                statusElement.className = 'error';
+            });
+        });
+
+        // === XỬ LÝ SỰ KIỆN FINGER & IRIS ===
+        fingerInput.addEventListener('change', () => { if (fingerInput.files.length > 0) fingerText.textContent = fingerInput.files[0].name; });
+        loginFingerButton.addEventListener('click', () => handleImageLogin('/login_fingerprint', fingerInput.files[0]));
+
+        irisInput.addEventListener('change', () => { if (irisInput.files.length > 0) irisText.textContent = irisInput.files[0].name; });
+        loginIrisButton.addEventListener('click', () => handleImageLogin('/login_iris', irisInput.files[0]));
+
+        function handleImageLogin(url, file) {
+            analysisArea.style.display = 'none';
+            const user = usernameInput.value;
+            if(!user) return alert("Vui lòng nhập tên!");
+            if(!file) return alert("Vui lòng chọn ảnh!");
+            
+            statusElement.textContent = "Đang xử lý phân tích...";
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = async () => {
+                try {
+                    const res = await fetch(url, {
+                        method: 'POST', headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({ username: user, image: reader.result })
+                    });
+                    const data = await res.json();
+                    if (handleRedirect(data)) return;
+                    statusElement.innerHTML = data.message;
+                    statusElement.className = data.success ? 'success' : 'error';
+                    if (data.analysis_image) {
+                        analysisArea.style.display = 'block';
+                        analysisImg.src = "data:image/jpeg;base64," + data.analysis_image;
+                        analysisImg.style.borderColor = data.success ? '#28a745' : '#dc3545';
+                    }
+                } catch (e) {
+                    statusElement.textContent = "Lỗi kết nối server!";
+                    statusElement.className = 'error';
+                }
+            }
+        }
+
+        // Init tab
+        document.querySelector('.tab-button.active').click();
+    </script>
+</body>
+</html>

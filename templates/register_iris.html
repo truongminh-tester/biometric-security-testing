@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>Đăng ký Mống mắt</title>
+    <style>
+        body { font-family: sans-serif; display: flex; justify-content: center; align-items: center; min-height: 100vh; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #333; flex-direction: column; padding: 2rem 0; }
+        .main-title { font-size: 2.5rem; font-weight: 300; color: white; margin-bottom: 2rem; }
+        #login-container { background: rgba(255,255,255,0.9); padding: 2.5rem; border-radius: 12px; width: 420px; box-shadow: 0 8px 32px rgba(31,38,135,0.37); }
+        h2 { text-align: center; margin-top: 0; }
+        input[type="text"] { width: calc(100% - 24px); padding: 12px; margin-bottom: 1rem; border: 2px solid #ddd; border-radius: 8px; }
+        .file-upload-label { display: block; padding: 30px; background: #f8f9fa; border: 2px dashed #ddd; border-radius: 8px; text-align: center; cursor: pointer; margin: 2rem 0; }
+        .file-upload-label:hover { border-color: #007bff; }
+        #status { font-weight: bold; margin-top: 1.5rem; text-align: center; }
+        #train-status { color: #28a745; font-weight: bold; text-align: center; margin-top: 0.5rem; }
+        .back-link { text-align: center; margin-top: 1.5rem; border-top: 1px solid #eee; padding-top: 1.5rem; }
+        .back-link a { color: #007bff; text-decoration: none; font-weight: 500;}
+    </style>
+</head>
+<body>
+    <h1 class="main-title">Đăng ký Sinh trắc học</h1>
+    <div id="login-container">
+        <h2>Đăng ký Mống mắt (Cần 5 ảnh)</h2>
+        <label for="name" style="font-weight: 500;">Nhập tên:</label>
+        <input type="text" id="name" style="width: 100%;" placeholder="Phải TRÙNG với tên đã đăng ký">
+        
+        <label for="file-input" class="file-upload-label" id="file-label-text">
+            Nhấn để chọn 5 ảnh mống mắt
+        </label>
+        <input type="file" id="file-input" multiple accept="image/*" style="display: none;">
+        
+        <div id="status">Vui lòng chọn 5 ảnh</div>
+        <div id="train-status"></div>
+        <div class="back-link"><a href="/">Quay lại trang Đăng nhập</a></div>
+    </div>
+
+    <script>
+        const fileInput = document.getElementById('file-input');
+        const nameInput = document.getElementById('name');
+        const statusDiv = document.getElementById('status');
+        const trainStatusDiv = document.getElementById('train-status');
+        const fileLabelText = document.getElementById('file-label-text');
+
+        fileInput.addEventListener('change', async (event) => {
+            const userName = nameInput.value.trim();
+            if (!userName) { statusDiv.textContent = "Vui lòng nhập tên!"; return; }
+            
+            const files = event.target.files;
+            if (files.length === 0) return;
+            
+            fileLabelText.textContent = `Đã chọn ${files.length} tệp.`;
+            statusDiv.textContent = "Đang tải lên...";
+            let successCount = 0;
+            const filesToUpload = Array.from(files).slice(0, 5);
+
+            for (let i = 0; i < filesToUpload.length; i++) {
+                const dataUrl = await fileToDataURL(filesToUpload[i]);
+                try {
+                    const response = await fetch('/api/register_iris', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ name: userName, image_data: dataUrl, count: i })
+                    });
+                    if ((await response.json()).status === "success") successCount++;
+                } catch (err) {}
+            }
+
+            statusDiv.textContent = `Thành công ${successCount}/${filesToUpload.length}.`;
+            if (successCount > 0) await triggerTraining();
+        });
+
+        async function triggerTraining() {
+            trainStatusDiv.textContent = "Đang huấn luyện...";
+            const response = await fetch('/api/trigger_train_iris', { method: 'POST' });
+            if ((await response.json()).status === "success") {
+                trainStatusDiv.textContent = "Huấn luyện xong!";
+                setTimeout(() => { window.location.href = '/'; }, 2000);
+            }
+        }
+
+        function fileToDataURL(file) {
+            return new Promise((resolve) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result);
+                reader.readAsDataURL(file);
+            });
+        }
+    </script>
+</body>
+</html>

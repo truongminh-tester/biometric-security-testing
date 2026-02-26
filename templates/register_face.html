@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>Đăng ký Khuôn mặt</title>
+    <style>
+        :root {
+            --primary-color: #007bff;
+            --primary-hover: #0056b3;
+            --danger-color: #dc3545;
+            --danger-hover: #c82333;
+            --success-color: #28a745;
+            --text-dark: #333;
+            --text-light: #f8f9fa;
+            --border-color: #ddd;
+        }
+        body {
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue", sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            height: auto;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: var(--text-dark);
+            flex-direction: column;
+            overflow: auto;
+            padding: 2rem 0;
+        }
+        .main-title {
+            font-size: 2.5rem;
+            font-weight: 300;
+            color: white;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+            margin-bottom: 2rem;
+        }
+        /* Dùng lại CSS của hộp đăng nhập */
+        #login-container {
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            padding: 2.5rem;
+            border-radius: 12px;
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+            width: 420px;
+        }
+        h2 {
+            text-align: center;
+            margin-top: 0;
+            margin-bottom: 1.5rem;
+            font-weight: 600;
+        }
+        input[type="text"] {
+            width: calc(100% - 24px);
+            padding: 12px;
+            margin-bottom: 1rem;
+            border: 2px solid var(--border-color);
+            border-radius: 8px;
+            font-size: 16px;
+        }
+        button {
+            width: 100%;
+            padding: 14px;
+            border: none;
+            color: white;
+            font-size: 16px;
+            font-weight: bold;
+            border-radius: 8px;
+            cursor: pointer;
+            margin-top: 1rem;
+            transition: all 0.3s ease;
+            background: linear-gradient(45deg, var(--primary-color), var(--primary-hover));
+        }
+        button:hover {
+            transform: translateY(-2px);
+        }
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        video {
+            width: 100%;
+            border-radius: 8px;
+            background-color: #000;
+            margin-bottom: 1rem;
+        }
+        #status {
+            font-weight: bold; margin-top: 1.5rem; text-align: center;
+        }
+        #train-status {
+            color: var(--success-color); font-weight: bold; text-align: center; margin-top: 0.5rem;
+        }
+        .back-link { 
+            text-align: center; margin-top: 1.5rem; border-top: 1px solid #eee; padding-top: 1.5rem;
+        }
+        .back-link a { color: var(--primary-color); text-decoration: none; font-weight: 500;}
+    </style>
+</head>
+<body>
+    <h1 class="main-title">Đăng ký Sinh trắc học</h1>
+
+    <div id="login-container"> <h2>Đăng ký Khuôn mặt (20 ảnh)</h2>
+        
+        <label for="name" style="font-weight: 500; margin-bottom: 5px; display: block;">Nhập tên:</label>
+        <input type="text" id="name" placeholder="Ví dụ: Minh, Lan, Tuan...">
+        
+        <video id="video" autoplay playsinline></video>
+        <canvas id="canvas" style="display:none;"></canvas>
+
+        <button id="snap">Bắt đầu Chụp (0/20)</button>
+        <div id="status">Vui lòng nhìn thẳng vào camera</div>
+        <div id="train-status"></div>
+
+        <div class="back-link">
+            <a href="/">Quay lại trang Đăng nhập</a>
+        </div>
+    </div>
+
+    <script>
+        // (JavaScript giữ nguyên y hệt)
+        const video = document.getElementById('video');
+        const canvas = document.getElementById('canvas');
+        const snapButton = document.getElementById('snap');
+        const nameInput = document.getElementById('name');
+        const statusDiv = document.getElementById('status');
+        const trainStatusDiv = document.getElementById('train-status');
+        const NUM_IMAGES_TO_CAPTURE = 20;
+        let captureCount = 0;
+        async function startWebcam() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+                video.srcObject = stream;
+            } catch (err) {
+                statusDiv.textContent = "Không thể truy cập webcam. Vui lòng cấp quyền.";
+            }
+        }
+        snapButton.addEventListener('click', async () => {
+            const userName = nameInput.value.trim();
+            if (!userName) {
+                statusDiv.textContent = "Vui lòng nhập tên trước khi chụp!"; return;
+            }
+            if (captureCount >= NUM_IMAGES_TO_CAPTURE) return; 
+            snapButton.disabled = true;
+            statusDiv.textContent = `Đang xử lý ảnh ${captureCount + 1}...`;
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+            const dataUrl = canvas.toDataURL('image/jpeg', 0.9);
+            try {
+                const response = await fetch('/api/register_face', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        name: userName,
+                        image_data: dataUrl,
+                        count: captureCount
+                    })
+                });
+                const result = await response.json();
+                if (result.status === "success") {
+                    captureCount++;
+                    statusDiv.textContent = `Thành công! (${captureCount}/${NUM_IMAGES_TO_CAPTURE}).`;
+                    snapButton.textContent = `Chụp ảnh (${captureCount}/${NUM_IMAGES_TO_CAPTURE})`;
+                } else {
+                    statusDiv.textContent = `Lỗi: ${result.message}. Thử lại!`;
+                }
+            } catch (err) {
+                statusDiv.textContent = "Lỗi kết nối máy chủ.";
+            }
+            snapButton.disabled = false;
+            if (captureCount >= NUM_IMAGES_TO_CAPTURE) {
+                statusDiv.textContent = "Hoàn tất thu thập! Bắt đầu huấn luyện...";
+                snapButton.textContent = "Đã hoàn tất";
+                snapButton.disabled = true;
+                await triggerTraining();
+            }
+        });
+        async function triggerTraining() {
+            trainStatusDiv.textContent = "Đang huấn luyện model... Vui lòng chờ...";
+            try {
+                const response = await fetch('/api/trigger_train_face', { method: 'POST' });
+                const result = await response.json();
+                if (result.status === "success") {
+                    trainStatusDiv.textContent = "Huấn luyện thành công! Đang chuyển về trang đăng nhập...";
+                    setTimeout(() => { window.location.href = '/'; }, 2000);
+                } else {
+                    trainStatusDiv.textContent = `Lỗi huấn luyện: ${result.message}`;
+                }
+            } catch (err) {
+                trainStatusDiv.textContent = "Lỗi kết nối khi huấn luyện.";
+            }
+        }
+        startWebcam();
+    </script>
+</body>
+</html>

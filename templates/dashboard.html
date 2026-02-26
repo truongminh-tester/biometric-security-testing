@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>Security Audit Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --card-bg: #1e293b;
+            --text-color: #e2e8f0;
+            --accent-color: #38bdf8;
+            --danger-color: #ef4444;
+            --success-color: #22c55e;
+        }
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0; padding: 20px;
+        }
+        .header {
+            display: flex; justify-content: space-between; align-items: center;
+            padding-bottom: 20px; border-bottom: 1px solid #334155; margin-bottom: 20px;
+        }
+        .logo { font-size: 1.5rem; font-weight: bold; color: var(--accent-color); display: flex; align-items: center; gap: 10px; }
+        .btn-logout {
+            background: var(--danger-color); color: white; padding: 8px 16px;
+            text-decoration: none; border-radius: 6px; font-size: 0.9rem; transition: 0.3s;
+        }
+        .btn-logout:hover { opacity: 0.8; }
+
+        /* Status Card */
+        .status-card {
+            background: var(--card-bg); padding: 20px; border-radius: 12px;
+            margin-bottom: 30px; border-left: 5px solid var(--success-color);
+        }
+        .status-title { font-size: 0.9rem; text-transform: uppercase; letter-spacing: 1px; color: #94a3b8; margin-bottom: 10px; }
+        
+        /* Table Styles */
+        .table-container { background: var(--card-bg); border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 15px 20px; text-align: left; border-bottom: 1px solid #334155; }
+        th { background: #0f172a; color: #94a3b8; font-weight: 500; text-transform: uppercase; font-size: 0.85rem; }
+        tr:last-child td { border-bottom: none; }
+        tr:hover { background-color: #2d3b4e; }
+
+        /* Badges */
+        .badge { padding: 4px 8px; border-radius: 4px; font-size: 0.8rem; font-weight: bold; }
+        .badge-success { color: var(--success-color); background: rgba(34, 197, 94, 0.1); }
+        .badge-failed { color: var(--danger-color); background: rgba(239, 68, 68, 0.1); }
+
+        /* Evidence Buttons */
+        .btn-evidence {
+            background: #3b82f6; color: white; border: none; padding: 6px 12px;
+            border-radius: 4px; cursor: pointer; font-size: 0.8rem; display: inline-flex; align-items: center; gap: 5px;
+            margin-right: 5px;
+        }
+        .btn-evidence:hover { background: #2563eb; }
+        .btn-audio { background: #8b5cf6; } /* Màu tím cho nút nghe */
+        .btn-audio:hover { background: #7c3aed; }
+
+        /* Modal Image */
+        #imgModal {
+            display: none; position: fixed; z-index: 999; left: 0; top: 0; width: 100%; height: 100%;
+            background-color: rgba(0,0,0,0.9); justify-content: center; align-items: center; flex-direction: column;
+        }
+        #modalImg { max-width: 80%; max-height: 80%; border-radius: 8px; box-shadow: 0 0 20px rgba(255,255,255,0.2); }
+        .close { position: absolute; top: 20px; right: 35px; color: #f1f1f1; font-size: 40px; font-weight: bold; cursor: pointer; }
+        
+        /* Audio Player Styles */
+        audio { height: 30px; margin-top: 5px; width: 200px; }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <div class="logo">
+            <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+            SECURITY OPS CENTER <span style="color: #64748b; font-weight: normal; margin-left: 10px;">| User: {{ user }}</span>
+        </div>
+        <a href="/logout" class="btn-logout">Đăng xuất</a>
+    </div>
+
+    <div class="status-card">
+        <div class="status-title">📊 Trạng thái hệ thống</div>
+        <div>Trạng thái bảo mật: <span style="color: var(--success-color); font-weight: bold;">AN TOÀN</span></div>
+        <div style="margin-top: 5px; font-size: 0.9rem; color: #64748b;">Phiên làm việc: Đã mã hóa End-to-End</div>
+    </div>
+
+    <h3 style="color: #94a3b8; margin-bottom: 15px;">📜 NHẬT KÝ TRUY CẬP (AUDIT LOGS)</h3>
+    
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>Thời gian</th>
+                    <th>Người dùng</th>
+                    <th>Phương thức</th>
+                    <th>Trạng thái</th>
+                    <th>Bằng chứng</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for log in logs %}
+                <tr>
+                    <td>{{ log.time }}</td>
+                    <td>{{ log.user }}</td>
+                    <td>{{ log.modality }}</td>
+                    <td>
+                        <span class="badge {{ 'badge-success' if log.status == 'SUCCESS' else 'badge-failed' }}">
+                            {{ log.status }}
+                        </span>
+                    </td>
+                    <td>
+                        {% if log.status == 'FAILED' %}
+                            <div style="display: flex; flex-direction: column; gap: 5px;">
+                                {% if log.evidence_img and log.evidence_img != 'N/A' %}
+                                    <button class="btn-evidence" onclick="showImage('{{ log.evidence_img }}')">
+                                        📷 XEM ẢNH
+                                    </button>
+                                {% endif %}
+
+                                {% if log.evidence_audio and log.evidence_audio != 'N/A' %}
+                                    <div style="display: flex; align-items: center; gap: 5px;">
+                                        <span style="font-size: 0.8rem; color: #aaa;">🔊 Voice:</span>
+                                        <audio controls>
+                                            <source src="{{ url_for('static', filename='intruders/' + log.evidence_audio) }}" type="audio/wav">
+                                            Trình duyệt không hỗ trợ audio.
+                                        </audio>
+                                    </div>
+                                {% endif %}
+
+                                {% if (not log.evidence_img or log.evidence_img == 'N/A') and (not log.evidence_audio or log.evidence_audio == 'N/A') %}
+                                    <span style="color: #64748b; font-style: italic;">-- Không có --</span>
+                                {% endif %}
+                            </div>
+                        {% else %}
+                            <span style="color: #64748b;">--</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div id="imgModal">
+        <span class="close" onclick="document.getElementById('imgModal').style.display='none'">&times;</span>
+        <img id="modalImg">
+        <div id="caption" style="color: white; margin-top: 10px;"></div>
+    </div>
+
+    <script>
+        function showImage(filename) {
+            var modal = document.getElementById("imgModal");
+            var modalImg = document.getElementById("modalImg");
+            // Đường dẫn ảnh phải trỏ đúng vào thư mục static/intruders
+            modalImg.src = "/static/intruders/" + filename;
+            modal.style.display = "flex";
+        }
+        
+        // Đóng modal khi click ra ngoài ảnh
+        document.getElementById("imgModal").addEventListener('click', function(e) {
+            if (e.target === this) this.style.display = "none";
+        });
+    </script>
+</body>
+</html>
